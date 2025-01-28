@@ -1,9 +1,13 @@
 const express= require("express")
+const dotenv=require("dotenv").config()
 const { otptoemailforverification } = require("../Services/EmailService/EmailService")
 const { User,Shopkeeper } = require("../Model/UserModel/UserModel")
 const { generateotp,verifyotp } = require("../Services/OtpService/OtpService")
 const Product=require("../Model/ProductModel/ProductModel")
-const handleSuccessResponse = require("../HandleResponse/HandleResponse")
+const HandleResponse=require("../HandleResponse/HandleResponse")
+const jwt=require("jsonwebtoken")
+const checkuserdetails = require("../Middlewares/Checkuserdetails")
+
 const Routes=express.Router()
 Routes.get("/HealthCheckApi",async(req,resp)=>{
    return resp.status(200).json({message:"Server health is okay"})
@@ -24,27 +28,43 @@ Routes.post("/verifyshopkeeper",async(req,resp)=>{
     }
 })
 Routes.post("/createshopkeeper",async(req,resp)=>{
-    try {
-        const {name,phone,email,address,password,city,state,otp}=req.body
+  try {
+    const { name, phone, email, address, password, city, state, otp } =
+      req.body;
 
-    if(!name ||!phone ||!email ||!address ||!city ||!state ||!password )return handleSuccessResponse(resp,404,"Field is empty")
-
-    if(!otp) return handleSuccessResponse(resp,404,"Enter the otp")
-    const existinguser=await User.findOne({email})
-    if(existinguser) 
-      return handleSuccessResponse(resp,400,"User Already Exist")  
-
-    //verify otp and then create the account
-    const response=verifyotp(email,otp)
-    if(!response.status) return handleSuccessResponse(resp,400,response.message)
-    
-    const result= await Shopkeeper.create({name,phone,email,password,address,city,state})
-    
-    return handleSuccessResponse(resp,201,"Account Created Suceesfully",result)
-    } catch (error) {
-        return handleSuccessResponse(resp,500,"Internal Server Error",null,error)
+    if (!name || !phone || !email || !address || !city || !state || !password) {
+      return resp.status(404).send({ message: "Field is Empty" });
     }
-}) 
+
+    if (!otp) {
+      return resp.status(404).send({ message: "Enter the otp" });
+    }
+
+    const existinguser = await User.findOne({ email });
+    if (existinguser)
+      return resp.status(400).json({ message: "Account already exists" });
+
+    const response = verifyotp(email, otp);
+    if (!response.status)
+      return resp.status(404).json({ message: response.message });
+
+    const result = await Shopkeeper.create({
+      name,
+      phone,
+      email,
+      password,
+      address,
+      city,
+      state,
+    });
+
+    return resp
+      .status(201)
+      .json({ message: "Account created successfully", result });
+  } catch (error) {
+    return resp.status(500).json({ message: "Internal Server error", error });
+  }
+});
 Routes.post("/login",async(req,resp)=>{
    try {
     const{email,password}=req.body;
@@ -55,7 +75,9 @@ Routes.post("/login",async(req,resp)=>{
     
     if(password===result.password){
         if(!result.service)return resp.status(401).json({message:"Your service is disabled"})
-     return resp.status(202).json({message:"Login Successfully",data:result._id})
+        const payload={id:result._id}
+        const token=jwt.sign(payload,process.env.JSON_SECRET_KEY)
+       return resp.status(202).json({message:"Login Successfully",token})
     }
     return resp.status(401).json({message:"Invalid password"})
    } catch (error) {
@@ -90,9 +112,9 @@ Routes.post("/disable",async (req,resp)=>{
        return resp.status(500).json({message:"Internal server error",error}) 
     }
 })
-Routes.post("/addproduct",async(req,resp)=>{
+Routes.post("/addproduct",checkuserdetails,async(req,resp)=>{
     try {
-       const{name,company,model,description,price,discount,rate,tax,stock,userid} =req.body
+       const{name,company,model,description,price,discount,rate,tax,userid} =req.body
        if(!name || !company || !model || !description || !price || !discount || !rate || !tax || !userid)
         return resp.status(404).json({message:"Field is empty"})
 
@@ -105,7 +127,7 @@ Routes.post("/addproduct",async(req,resp)=>{
         return resp.status(500).json({ message: "Internal Server error", error });
     }
 })
-Routes.get("/getproducts", async (req, resp) => {
+Routes.get("/getproducts",checkuserdetails,async (req, resp) => {
     try {
       const allproducts = await Product.find({
         userid: "6796764ee39caafd3f01c867",
@@ -118,7 +140,7 @@ Routes.get("/getproducts", async (req, resp) => {
       return resp.status(500).json({ message: "Internal Server error", error });
     }
 });
-Routes.delete("/deleteproduct/:id", async (req, resp) => {
+Routes.delete("/deleteproduct/:id",checkuserdetails, async (req, resp) => {
     try {
       const { id } = req.params;
       if (!id)
@@ -139,7 +161,7 @@ Routes.delete("/deleteproduct/:id", async (req, resp) => {
       return resp.status(500).json({ message: "Internal Server error", error });
     }
 });
-Routes.put("/updateproduct/:id", async (req, resp) => {
+Routes.put("/updateproduct/:id",checkuserdetails, async (req, resp) => {
     try {
       const {
         name,company,model,stock,description,price,discount,rate,tax,} = req.body;
@@ -179,7 +201,7 @@ Routes.put("/updateproduct/:id", async (req, resp) => {
       return resp.status(500).json({ message: "Internal Server error", error });
     }
 });
-  
+
 
    
    
