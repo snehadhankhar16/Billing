@@ -1,4 +1,5 @@
-const handleSuccessResponse=(resp,status,message,data=null,error=null)=>{
-    return resp.status(404).json({ message: "Field is Empty" });
+const HandleResponse=(resp,status,message,data=null,error=null)=>{
+    return resp.status(status).json({ message,data,error });
   
 }
+module.exports=HandleResponse

@@ -65,25 +65,26 @@ Routes.post("/createshopkeeper",async(req,resp)=>{
     return resp.status(500).json({ message: "Internal Server error", error });
   }
 });
-Routes.post("/login",async(req,resp)=>{
-   try {
-    const{email,password}=req.body;
-    if(!email || !password) return resp.status(404).json({message:"Field is empty"})
-    
-    const result=await User.findOne({email})
-    if(!result)return resp.status(401).json({message:"Invalid email"})
-    
-    if(password===result.password){
-        if(!result.service)return resp.status(401).json({message:"Your service is disabled"})
-        const payload={id:result._id}
-        const token=jwt.sign(payload,process.env.JSON_SECRET_KEY)
-       return resp.status(202).json({message:"Login Successfully",token})
+Routes.post("/login", async (req, resp) => {
+  try {
+    const { email, password } = req.body;
+    if (!email || !password) return HandleResponse(resp,404,"Field is Empty");
+
+    const result = await User.findOne({ email });
+    if (!result) return HandleResponse(resp,401,"Invalid Email");
+
+    if (password === result.password) {
+      if (!result.service) return HandleResponse(resp,401,"Your service is disabled");
+      const payload={id:result._id}
+      const token=jwt.sign(payload,process.env.JSON_SECRET_KEY)
+      return HandleResponse(resp,202,"login successfully",{token,role:result.role})
     }
-    return resp.status(401).json({message:"Invalid password"})
-   } catch (error) {
-    return resp.status(500).json({message:"Internal Server Error",error})
-   }
-})
+    return HandleResponse(resp,401,"Invalid Password");
+  } catch (error) {
+    return HandleResponse(resp,500,"Internal Server error",null,error);
+  }
+});
+    
 Routes.post("/enable",async (req,resp)=>{
      try {
         const {id}=req.body
@@ -114,13 +115,14 @@ Routes.post("/disable",async (req,resp)=>{
 })
 Routes.post("/addproduct",checkuserdetails,async(req,resp)=>{
     try {
+
        const{name,company,model,description,price,discount,rate,tax,userid} =req.body
        if(!name || !company || !model || !description || !price || !discount || !rate || !tax || !userid)
         return resp.status(404).json({message:"Field is empty"})
 
        const existingproduct=await Product.findOne({model})
        if(existingproduct) return resp.status(404).json({message:"Product of this model already exists"})
-       const newproduct=await Product.create({userid,name,company,model,description,price,discount,rate,tax,stock
+       const newproduct=await Product.create({userid:req.user._id,name,company,model,description,price,discount,rate,tax,stock
     }) 
        return resp.status(201).json({message:"Product added Successfully",newproduct})
     } catch (error) {
@@ -130,7 +132,7 @@ Routes.post("/addproduct",checkuserdetails,async(req,resp)=>{
 Routes.get("/getproducts",checkuserdetails,async (req, resp) => {
     try {
       const allproducts = await Product.find({
-        userid: "6796764ee39caafd3f01c867",
+        userid : req.user._id,
       });
       if (allproducts.length === 0)
         return resp.status(404).json({ message: "Your product list is empty" });
@@ -148,13 +150,13 @@ Routes.delete("/deleteproduct/:id",checkuserdetails, async (req, resp) => {
   
       const existingproduct = await Product.findOne({
         _id: id,
-        userid: "6796764ee39caafd3f01c867",
+        userid:  req.user._id,
       });
       if (!existingproduct)return resp.status(404) .json({ message: "This product is not found in your product list." });
   
       const result = await Product.deleteOne({
         _id: id,
-        userid: "6796764ee39caafd3f01c867",
+        userid:  req.user._id,
       });
       return resp.status(202).json({ message: "Product deleted successfully", result });
     } catch (error) {
@@ -201,6 +203,11 @@ Routes.put("/updateproduct/:id",checkuserdetails, async (req, resp) => {
       return resp.status(500).json({ message: "Internal Server error", error });
     }
 });
+Routes.post("/fetchuserdetails",checkuserdetails, async(req,resp)=>{
+  const payload={id:req.user._id}
+  const token=jwt.sign(payload,process.env.JSON_SECRET_KEY)
+  return HandleResponse(resp,202,"USer is valid",{role:req.user.role,token})
+})
 
 
    
