@@ -3,7 +3,7 @@ require("dotenv").config()
 const productschema=new mongoose.Schema({
    userid:{
     type:mongoose.Schema.Types.ObjectId,
-    ref:process.env.MONGODB_USER_COLLECTION,
+    ref:"process.env.MONGODB_USER_COLLECTION",
     required:true
     },
    name:{
@@ -45,5 +45,5 @@ const productschema=new mongoose.Schema({
     default:0
    },
 })
-const Product=mongoose.model(process.env.MONGODB_PRODUCT_COLLECTION,productschema)
+const Product=mongoose.model("products",productschema)
 module.exports=Product

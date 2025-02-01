@@ -1,5 +1,5 @@
 const nodemailer = require('nodemailer');//transmitt medium for send info to other email
-require("dotenv").config()
+
 const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {

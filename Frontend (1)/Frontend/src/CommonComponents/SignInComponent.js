@@ -12,7 +12,7 @@ const SignInComponent = () => {
       try {
         e.preventDefault()
         setloading(true)
-        const response=await fetch("http://localhost:5010/api/login",{
+        const response=await fetch("http://localhost:3010/api/login",{
           body:JSON.stringify(obj),
           method:"post",
           headers:{
@@ -20,7 +20,6 @@ const SignInComponent = () => {
           }
         })
         const result=await response.json()
-        console.log(result)
         alert(result?.message)
         if(response.status===202)
         {
@@ -43,7 +42,7 @@ const SignInComponent = () => {
     },[])
 
     const fetchuserdetails=async(token,remember)=>{
-    const response= await fetch("http:localhost:5010/api/fetchuserdetails",{
+    const response= await fetch("http:localhost:3010/api/fetchuserdetails",{
     method:"post",
     headers:{
         "Content-Type":"application/json",
@@ -51,7 +50,6 @@ const SignInComponent = () => {
     }
    })
      const result=await response.json()
-      console.log(result)
      alert(result?.message)
      if(response.status===202){
      localStorage.clear()
