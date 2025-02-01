@@ -1,4 +1,5 @@
 const mongoose=require("mongoose")
+require("dotenv").config()
 const BaseSchema=new mongoose.Schema({
     name:{
         type:String,
@@ -37,7 +38,7 @@ const BaseSchema=new mongoose.Schema({
     role:{
         type:String,
         required:true,
-        enum:["shopkeeper","executive"],//Restrict values shopkeeper or executive
+        enum:["Shopkeeper","Executive"],//Restrict values shopkeeper or executive
     },
     createdAt:{
         type:Date,

@@ -1,68 +1,48 @@
-const express= require("express")
-const dotenv=require("dotenv").config()
-const { otptoemailforverification } = require("../Services/EmailService/EmailService")
-const { User,Shopkeeper } = require("../Model/UserModel/UserModel")
-const { generateotp,verifyotp } = require("../Services/OtpService/OtpService")
+const express = require("express");
+const { generateotp, verifyotp } = require("../Services/OtpService/OtpService");
+const {otptoemailforverification} = require("../Services/EmailService/EmailService");
+const { User, Shopkeeper } = require("../Model/UserModel/UserModel");
 const Product=require("../Model/ProductModel/ProductModel")
 const HandleResponse=require("../HandleResponse/HandleResponse")
-const jwt=require("jsonwebtoken")
-const checkuserdetails = require("../Middlewares/Checkuserdetails")
+const jwt=require("jsonwebtoken");
+require("dotenv").config()
+const checkuserdetails = require("../Middlewares/Checkuserdetails");
+const Routes = express.Router();
 
-const Routes=express.Router()
-Routes.get("/HealthCheckApi",async(req,resp)=>{
-   return resp.status(200).json({message:"Server health is okay"})
-})
-Routes.post("/verifyshopkeeper",async(req,resp)=>{
+Routes.get("/HealthCheckApi", async (req, resp) =>HandleResponse(resp,202,"Server Health is Okay"))
+Routes.post("/verifyuser",checkuserdetails,async (req, resp) => {
   try {
-    const{name,phone,email,password,address,city,state}=req.body
-    //field check
-    if(!name ||!phone ||!email ||!password ||!city ||!address ||!state) return resp.status(404).json({message:"Field is Empty"})
-   // Account check
-    const existinguser=await User.findOne({email})
-    if(existinguser) return resp.status(400).json({message:"Account already exists"})    
-    const otp=generateotp(email)  
-    return await otptoemailforverification(resp,email,otp)    
-    //generate otp and send it to email and verify them
-  } catch (error) {
-    return resp.status(500).json({message:"Internal Server Error",error})
-    }
-})
-Routes.post("/createshopkeeper",async(req,resp)=>{
-  try {
-    const { name, phone, email, address, password, city, state, otp } =
-      req.body;
+    const { name, phone, email, password, address, city, state,role } = req.body;
 
-    if (!name || !phone || !email || !address || !city || !state || !password) {
-      return resp.status(404).send({ message: "Field is Empty" });
-    }
-
-    if (!otp) {
-      return resp.status(404).send({ message: "Enter the otp" });
-    }
+    if (!name || !phone || !email || !password || !city || city==="None" || !address || !state || state==="None" || !role) return HandleResponse(resp,404,"Field is Empty")
 
     const existinguser = await User.findOne({ email });
-    if (existinguser)
-      return resp.status(400).json({ message: "Account already exists" });
+    if (existinguser) return HandleResponse(resp,400,"Account already exists")
+
+    const otp = generateotp(email);
+    return await otptoemailforverification(resp, email, otp);
+  } catch (error) {
+    return HandleResponse(resp,500,"Internal Server Error",null,error);
+  }
+});
+Routes.post("/createuser",checkuserdetails,async (req, resp) => {
+  try {
+    const { name, phone, email, address, password, city, state,role, otp } =req.body;
+
+    if (!name || !phone || !email || !address || !city || city==="None" || !state || state==="None" || !password ||!role) return HandleResponse(resp,404,"Field is Empty")
+
+    if (!otp) return HandleResponse(resp,404,"Enter the otp");
+
+    const existinguser = await User.findOne({ email });
+    if (existinguser) return HandleResponse(resp,400,"Account already exists")
 
     const response = verifyotp(email, otp);
-    if (!response.status)
-      return resp.status(404).json({ message: response.message });
+    if (!response.status) return HandleResponse(resp,404,response.message);
 
-    const result = await Shopkeeper.create({
-      name,
-      phone,
-      email,
-      password,
-      address,
-      city,
-      state,
-    });
-
-    return resp
-      .status(201)
-      .json({ message: "Account created successfully", result });
+    const result = await User.create({name,phone,email,password,address,city,state,role});
+    return HandleResponse(resp,201,"Account created successfully",result);
   } catch (error) {
-    return resp.status(500).json({ message: "Internal Server error", error });
+    return HandleResponse(resp,500,"Internal Server error",null,error)
   }
 });
 Routes.post("/login", async (req, resp) => {
@@ -84,200 +64,152 @@ Routes.post("/login", async (req, resp) => {
     return HandleResponse(resp,500,"Internal Server error",null,error);
   }
 });
-    
-Routes.post("/enable",async (req,resp)=>{
-     try {
-        const {id}=req.body
-        if(!id)return resp.status(404).json({message:"Plz select the user"})
+Routes.put("/enable",checkuserdetails, async (req, resp) => {
+  try {
+    const { id } = req.body;
+    if (!id) return HandleResponse(resp,404,"Plz Select the user");
 
-        const existinguser=await User.findOne({_id:id})  
-        if(!existinguser) return resp.status(404).json({message:"USer isn't found"})
-            
-        const result=await User.updateOne({_id:id},{$set:{service :true}})   
-        return resp.status(202).json({message:"Service is enabled",result}) 
-     } catch (error) {
-        return resp.status(500).json({message:"Internal server error",error}) 
-     }
+    const existinguser = await User.findOne({ _id: id });
+    if (!existinguser) return HandleResponse(resp,404,"User is not found");
+
+    const result = await User.updateOne({ _id: id },{ $set: { service: true } });
+    return HandleResponse(resp,202,"Service is enabled",result)
+  } catch (error) {
+    return HandleResponse(resp,500,"Internal Server error",null,error)
+  }
+});
+Routes.put("/disable",checkuserdetails, async (req, resp) => {
+  try {
+    const { id } = req.body;
+    if (!id) return HandleResponse(resp,404,"Plz Select the user");
+
+    const existinguser = await User.findOne({ _id: id });
+    if (!existinguser) return HandleResponse(resp,404,"User is not found");
+
+    const result = await User.updateOne({ _id: id },{ $set: { service: false } });
+    return HandleResponse(resp,202,"Service is disabled",result)
+  } catch (error) {
+    return HandleResponse(resp,500,"Internal Server error",null,error)
+  }
+});
+Routes.get("/getallusers",checkuserdetails,async(req,resp)=>{
+  try {
+    const users = await User.find({role:{$ne:'Superadmin'}}).select("-password")         //$ne Superadmin ko chod kar------------password bhi nhi ayge
+    if(users.length===0) return HandleResponse(resp,400,"No user found")
+    return HandleResponse(resp,202,"Users fetched successfully",users)
+  } catch (error) {
+    return HandleResponse(resp,500,"Internal Server error",null,error)
+  }
 })
-Routes.post("/disable",async (req,resp)=>{
-    try {
-       const {id}=req.body
-       if(!id)return resp.status(404).json({message:"Plz select the user"})
-
-       const existinguser=await User.findOne({_id:id})  
-       if(!existinguser) return resp.status(404).json({message:"USer isn't found"})
-           
-       const result=await User.updateOne({_id:id},{$set:{service :false}})   
-       return resp.status(202).json({message:"Service is disabled",result}) 
-    } catch (error) {
-       return resp.status(500).json({message:"Internal server error",error}) 
-    }
+Routes.post("/fetchuserdetails",checkuserdetails,async(req,resp)=>{
+  const payload={id:req.user._id}
+  const token=jwt.sign(payload,process.env.JSON_SECRET_KEY)
+  return HandleResponse(resp,202,"Login Successfully",{role:req.user.role,token})
 })
 Routes.post("/addproduct",checkuserdetails,async(req,resp)=>{
     try {
-
-       const{name,company,model,description,price,discount,rate,tax,userid} =req.body
-       if(!name || !company || !model || !description || !price || !discount || !rate || !tax || !userid)
-        return resp.status(404).json({message:"Field is empty"})
-
-       const existingproduct=await Product.findOne({model})
-       if(existingproduct) return resp.status(404).json({message:"Product of this model already exists"})
-       const newproduct=await Product.create({userid:req.user._id,name,company,model,description,price,discount,rate,tax,stock
-    }) 
-       return resp.status(201).json({message:"Product added Successfully",newproduct})
-    } catch (error) {
-        return resp.status(500).json({ message: "Internal Server error", error });
-    }
-})
-Routes.get("/getproducts",checkuserdetails,async (req, resp) => {
-    try {
-      const allproducts = await Product.find({
-        userid : req.user._id,
-      });
-      if (allproducts.length === 0)
-        return resp.status(404).json({ message: "Your product list is empty" });
-  
-      return resp.status(202).json({ message: "All Products successfully fetched", allproducts });
-    } catch (error) {
-      return resp.status(500).json({ message: "Internal Server error", error });
-    }
-});
-Routes.delete("/deleteproduct/:id",checkuserdetails, async (req, resp) => {
-    try {
-      const { id } = req.params;
-      if (!id)
-        return resp.status(404).json({ message: "Plz select the product" });
-  
-      const existingproduct = await Product.findOne({
-        _id: id,
-        userid:  req.user._id,
-      });
-      if (!existingproduct)return resp.status(404) .json({ message: "This product is not found in your product list." });
-  
-      const result = await Product.deleteOne({
-        _id: id,
-        userid:  req.user._id,
-      });
-      return resp.status(202).json({ message: "Product deleted successfully", result });
-    } catch (error) {
-      return resp.status(500).json({ message: "Internal Server error", error });
-    }
-});
-Routes.put("/updateproduct/:id",checkuserdetails, async (req, resp) => {
-    try {
-      const {
-        name,company,model,stock,description,price,discount,rate,tax,} = req.body;
-        if (!name || !company || !model || !description || !price || !discount || !rate || !tax)
-        return resp.status(404).json({ message: "Field is Empty" });
-  
-        const { id } = req.params;
-        if (!id)
-        return resp.status(404).json({ message: "Plz select the product" });
+        const {name,company,model,description,price,discount,rate,tax,stock}=req.body
+        if(!name ||!company ||!model ||!description ||!price ||!discount ||!rate ||!tax) return HandleResponse(resp,404,"Field is Empty")
         
-        const existingproduct = await Product.findOne({ _id: id });
-        if (!existingproduct)
-        return resp.status(404).json({ message: "This product is not found in your product list" });
-  
-        const response = await Product.findOne({ model });
-        if (response) return resp.status(400).json({message: "Product of this model is already exists in your product list",
-        });
-  
-      const updatedproduct = await Product.updateOne(
-        { _id: id },
-        {
-          $set: {
-            name,
-            company,
-            model,
-            description,
-            price,
-            discount,
-            rate,
-            tax,
-            stock,
-          },
-        }
-      );
-      return resp.status(202).json({ message: "Product updated successfully", updatedproduct });
+        const existingproduct=await Product.findOne({model})
+        if(existingproduct) return HandleResponse(resp,400,"Product of this model already exists")
+        
+        const newproduct=await Product.create({userid:req.user._id,name,company,model,description,price,discount,rate,tax,stock})
+        return HandleResponse(resp,201,"Product added successfully",newproduct)
     } catch (error) {
-      return resp.status(500).json({ message: "Internal Server error", error });
+        return HandleResponse(resp,500,"Internal Server error",null, error )
     }
-});
-Routes.post("/fetchuserdetails",checkuserdetails, async(req,resp)=>{
-  const payload={id:req.user._id}
-  const token=jwt.sign(payload,process.env.JSON_SECRET_KEY)
-  return HandleResponse(resp,202,"USer is valid",{role:req.user.role,token})
+})
+Routes.get("/getproducts",checkuserdetails,async(req,resp)=>{
+    try {
+        const allproducts=await Product.find({userid:req.user._id})
+        if(allproducts.length===0) return HandleResponse(resp,404,"Your product list is empty")
+        
+        return HandleResponse(resp,202,"All Products successfully fetched",allproducts)
+    } catch (error) {
+      return HandleResponse(resp,500,"Internal Server error",null, error )       
+    }
+})
+Routes.delete("/deleteproduct/:id",checkuserdetails,async(req,resp)=>{
+    try {
+        const {id}=req.params
+        if(!id) return HandleResponse(resp,404,"Plz select the product")
+        
+        const existingproduct=await Product.findOne({_id:id,userid:req.user._id})
+        if(!existingproduct) return HandleResponse(resp,404,"This product is not found in your product list.")
+        
+        const result=await Product.deleteOne({_id:id,userid:req.user._id})
+        return HandleResponse(resp,202,"Product deleted successfully",result)
+    } catch (error) {
+       return HandleResponse(resp,500,"Internal Server error",null, error );
+    }
+})
+Routes.put("/updateproduct/:id",checkuserdetails,async(req,resp)=>{
+    try {
+        const {name,company,model,description,price,discount,rate,tax,stock}=req.body
+        if(!name ||!company ||!model ||!description ||!price ||!discount ||!rate ||!tax) return HandleResponse(resp,404,"Field is Empty")
+        
+        const {id}=req.params
+        if(!id) return HandleResponse(resp,404,"Plz select the product")
+
+        const existingproduct=await Product.findOne({_id:id,userid:req.user._id})
+        if(!existingproduct) return HandleResponse(resp,404,"This product is not found in your product list")
+        
+        const response=await Product.findOne({model})
+        if(response) return HandleResponse(resp,400,"Product of this model is already exists in your product list")
+
+        const updatedproduct=await Product.updateOne({_id:id},{$set:{name,company,model,description,price,discount,rate,tax,stock}})
+        return HandleResponse(resp,202,"Product updated successfully",updatedproduct)
+    } catch (error) {
+        return HandleResponse(resp,500,"Internal Server error",null,error);
+    }
 })
 
+const validateObjectKeys = (object, schema) => {
+    const schemaKeys = Object.keys(schema.paths).filter((key) => key !== '__v' && key !== '_id' && key !== 'createdat');
+    const objectKeys = Object.keys(object);
 
-   
-   
+    for (const key of schemaKeys) {
+      if (!object.hasOwnProperty(key) || object[key] === null || object[key] === '') return "The key "+key+" is missing or empty."
+    }
+  
+    for (const key of objectKeys) {
+      if (!schemaKeys.includes(key)) return "The key "+key+" is not declared in the schema."
+    }
 
-
-
-
-
-
-{/*Routes.get("/fetchallaccounts",async(req,resp)=>{
-    const result=await xUser.find()
-    return resp.status(202).json({message:"Fetched Successfully",result})
+    return null;
+};
+Routes.post("/addmultipleproducts",checkuserdetails,async(req,resp)=>{
+    try {
+        const {items} = req.body;
+        if (!Array.isArray(items) || items.length === 0) return HandleResponse(resp,400,'Invalid input. Provide an array of items.')
+        const updateditems= items.map(item=>{return {...item,userid:req.user._id}})
+        const errors = [];
+        updateditems.map(async(item,index)=>{
+            const validationError = validateObjectKeys(item, Product.schema);
+            if (validationError) errors.push({ index, error: validationError })
+        
+            const existingproduct = await Product.findOne({ model: item.model });
+            if(existingproduct) errors.push({ index, error: "The modelNumber " +item.model+" already exists."})
+        })    
+    
+        if(errors.length > 0) return HandleResponse(resp,400,'Validation errors occurred.',null,errors);
+    
+        const result = await Product.insertMany(updateditems);
+        return HandleResponse(resp,201,'All products are added successfully',result)
+      } catch (error) {
+        return HandleResponse(resp,500,'Internal Server Error',null,error);
+       }
 })
-Routes.post("/fetchaccount",async(req,resp)=>{
-    const {email}=req.body
-    const result=await User.findOne({email})
-    if(!result)
-    {
-        return resp.status(404).send({message:"Account not found related to this email"})
-    }
-    return resp.status(202).send({message:"Fetched Successfully",result})
+
+Routes.get("/getallshopkeepers",checkuserdetails,async(req,resp)=>{
+ try {
+  const result=await Shopkeeper.find().select("email _id")
+  if(result.length===0) return HandleResponse(resp,400,"No Shopkeeper found")
+  return HandleResponse(resp,202,"Shopkeeper fetched successfully",result)
+ } catch (error) {
+  return HandleResponse(resp,500,"Internal Server error",null,error)
+ }
 })
-Routes.delete("/deleteaccount/:id",async(req,resp)=>{
-    const {id}=req.params
-    if(!id){
-        return resp.status(404).send({message:"Id is not found"})
-    }
-    const existinguser=await User.findOne({_id:id})
-    if(!existinguser){
-        return resp.status(404).send({message:"User not found"})
-    }
-    const result=await User.deleteOne({_id:id})
-    return resp.status(202).send({message:"User Deleted Successfully",result}) 
-})
-Routes.post("/createaccount",async(req,resp)=>{
-  const {name,phone,email,password,city}=req.body
-  if(!name ||!phone ||!email ||!password ||!city){
-   return resp.status(404).send({message:"Field is Empty"})
-  }
-  const existinguser=await User.findOne({email})
-  if(existinguser){
-    return resp.status(400).send({message:"Account already exists"})    
-  }
-  const result=await User.create({name,phone,email,password,city})
-  return resp.status(201).send({message:"Account created Successfully",result})
-})
-Routes.put("/updateaccount/:id",async(req,resp)=>{
-    const {name,phone,email,password,city}=req.body
-    const {id}=req.params
-    if(!id){
-        return resp.status(404).send({message:"Id is not found"})
-    }
-    const existinguser=await User.findOne({_id:id})
-    if(!existinguser){
-        return resp.status(404).send({message:"User not found"})
-    }
-    if(!name ||!phone ||!email ||!password ||!city){
-     return resp.status(404).send({message:"Field is Empty"})
-    }
-    const existingemailuser=await User.findOne({email})
-    if(existingemailuser){
-    return resp.status(400).send({message:"Email is already registered"})    
-    }
-    const result=await User.updateOne({_id:id},{$set:{name,phone,email,password,city}})
-    return resp.status(201).send({message:"Account updated Successfully",result})
-})*/}
-module.exports=Routes
 
-
-
-
-
+module.exports = Routes;
