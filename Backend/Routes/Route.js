@@ -147,7 +147,7 @@ Routes.delete("/deleteproduct/:id",checkuserdetails,async(req,resp)=>{
 Routes.put("/updateproduct/:id",checkuserdetails,async(req,resp)=>{
     try {
         const {name,company,model,description,price,discount,rate,tax,stock}=req.body
-        if(!name ||!company ||!model ||!description ||!price ||!discount ||!rate ||!tax) return HandleResponse(resp,404,"Field is Empty")
+        if(!name ||!company ||!model ||!description ||!price ||!discount ||!rate ||!tax ||!stock) return HandleResponse(resp,404,"Field is Empty")
         
         const {id}=req.params
         if(!id) return HandleResponse(resp,404,"Plz select the product")
@@ -156,7 +156,7 @@ Routes.put("/updateproduct/:id",checkuserdetails,async(req,resp)=>{
         if(!existingproduct) return HandleResponse(resp,404,"This product is not found in your product list")
         
         const response=await Product.findOne({model})
-        if(response) return HandleResponse(resp,400,"Product of this model is already exists in your product list")
+        if(response  && response._id.toString()!==id) return HandleResponse(resp,400,"Product of this model is already exists in your product list")
 
         const updatedproduct=await Product.updateOne({_id:id},{$set:{name,company,model,description,price,discount,rate,tax,stock}})
         return HandleResponse(resp,202,"Product updated successfully",updatedproduct)
@@ -164,7 +164,6 @@ Routes.put("/updateproduct/:id",checkuserdetails,async(req,resp)=>{
         return HandleResponse(resp,500,"Internal Server error",null,error);
     }
 })
-
 const validateObjectKeys = (object, schema) => {
     const schemaKeys = Object.keys(schema.paths).filter((key) => key !== '__v' && key !== '_id' && key !== 'createdat');
     const objectKeys = Object.keys(object);
@@ -181,7 +180,7 @@ const validateObjectKeys = (object, schema) => {
 };
 Routes.post("/addmultipleproducts",checkuserdetails,async(req,resp)=>{
     try {
-        const {items} = req.body;
+        const {items} = req.body;// arr of obj
         if (!Array.isArray(items) || items.length === 0) return HandleResponse(resp,400,'Invalid input. Provide an array of items.')
         const updateditems= items.map(item=>{return {...item,userid:req.user._id}})
         const errors = [];
@@ -201,7 +200,6 @@ Routes.post("/addmultipleproducts",checkuserdetails,async(req,resp)=>{
         return HandleResponse(resp,500,'Internal Server Error',null,error);
        }
 })
-
 Routes.get("/getallshopkeepers",checkuserdetails,async(req,resp)=>{
  try {
   const result=await Shopkeeper.find().select("email _id")
