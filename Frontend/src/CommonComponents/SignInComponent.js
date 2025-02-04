@@ -37,7 +37,7 @@ const SignInComponent = () => {
     useEffect(()=>{
      const getdata=async()=>{
         const userinfo=JSON.parse( localStorage.getItem("Userinfo"))
-        if(!userinfo && userinfo.Rememberme)return await fetchuserdetails(userinfo.Authorization,userinfo.Rememberme)
+        if(userinfo && userinfo.Rememberme)return await fetchuserdetails(userinfo.Authorization,userinfo.Rememberme)
      }
      getdata()
     },[])

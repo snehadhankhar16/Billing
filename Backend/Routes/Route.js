@@ -1,7 +1,7 @@
 const express = require("express");
 const { generateotp, verifyotp } = require("../Services/OtpService/OtpService");
 const {otptoemailforverification} = require("../Services/EmailService/EmailService");
-const { User, Shopkeeper } = require("../Model/UserModel/UserModel");
+const { User, Shopkeeper,Executive } = require("../Model/UserModel/UserModel");
 const Product=require("../Model/ProductModel/ProductModel")
 const HandleResponse=require("../HandleResponse/HandleResponse")
 const jwt=require("jsonwebtoken");
@@ -219,6 +219,65 @@ Routes.get("/getallcitiesandstates",checkuserdetails,async(req,resp)=>{
    return HandleResponse(resp,500,"Internal Server error",null,error)
   }
 })
-
+Routes.post("/verifyexecutive",checkuserdetails,async (req, resp) => {
+  try {
+    const { name, phone, email, password, address, city, state } = req.body;
+    if (!name || !phone || !email || !password || !city || city==="None" || !address || !state || state==="None") return HandleResponse(resp,404,"Field is Empty")
+    const existinguser = await User.findOne({ email });
+    if (existinguser) return HandleResponse(resp,400,"Account already exists")
+    const otp = generateotp(email);
+    return await otptoemailforverification(resp, email, otp);
+  } catch (error) {
+    return HandleResponse(resp,500,"Internal Server Error",null,error);
+  }
+});
+Routes.post("/createexecutive",checkuserdetails,async (req, resp) => {
+  try {
+    const { name, phone, email, address, password, city, state, otp } =req.body;
+    if (!name || !phone || !email || !address || !city || city==="None" || !state || state==="None" || !password) return HandleResponse(resp,404,"Field is Empty")
+    if (!otp) return HandleResponse(resp,404,"Enter the otp");
+    const existinguser = await User.findOne({ email });
+    if (existinguser) return HandleResponse(resp,400,"Account already exists")
+    const response = verifyotp(email, otp);
+    if (!response.status) return HandleResponse(resp,404,response.message);
+    const result = await Executive.create({name,phone,email,password,address,city,state,executiveof:req.user._id});
+    return HandleResponse(resp,201,"Account created successfully",result);
+  } catch (error) {
+    return HandleResponse(resp,500,"Internal Server error",null,error)
+  }
+});
+Routes.get("/getallexecutives",checkuserdetails,async(req,resp)=>{
+  try {
+    const users = await Executive.find({executiveof:req.user._id}).select("-password")
+    if(users.length===0) return HandleResponse(resp,400,"No user found")
+    return HandleResponse(resp,202,"Users fetched successfully",users)
+  } catch (error) {
+    return HandleResponse(resp,500,"Internal Server error",null,error)
+  }
+})
+Routes.put("/enableexecutive",checkuserdetails, async (req, resp) => {
+  try {
+    const { id } = req.body;
+    if (!id) return HandleResponse(resp,404,"Plz Select the Executive");
+    const existinguser = await Executive.findOne({ _id: id });
+    if (!existinguser) return HandleResponse(resp,404,"Executive is not found");
+    const result = await Executive.updateOne({ _id: id },{ $set: { service: true } });
+    return HandleResponse(resp,202,"Service is enabled",result)
+  } catch (error) {
+    return HandleResponse(resp,500,"Internal Server error",null,error)
+  }
+});
+Routes.put("/disableexecutive",checkuserdetails, async (req, resp) => {
+  try {
+    const { id } = req.body;
+    if (!id) return HandleResponse(resp,404,"Plz Select the Executive");
+    const existinguser = await Executive.findOne({ _id: id });
+    if (!existinguser) return HandleResponse(resp,404,"Executive is not found");
+    const result = await Executive.updateOne({ _id: id },{ $set: { service: false } });
+    return HandleResponse(resp,202,"Service is disabled",result)
+  } catch (error) {
+    return HandleResponse(resp,500,"Internal Server error",null,error)
+  }
+});
 
 module.exports = Routes;

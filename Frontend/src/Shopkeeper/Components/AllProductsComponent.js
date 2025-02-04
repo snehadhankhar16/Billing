@@ -132,6 +132,7 @@ const AllProductsComponent = () => {
                                                                     <tr className="text-muted text-uppercase">
                                                                         <th scope='col' style={{ width: '1%' }}>S.No</th>
                                                                         <th scope="col" style={{ width: '16%' }}>Product Name-Model</th>
+                                                                       
                                                                         <th scope="col" style={{ width: '16%' }}>Product Description</th>
                                                                         <th scope="col" style={{ width: '8%' }}>Company</th>
                                                                         <th scope="col" style={{ width: '3%' }}>Stock</th>
