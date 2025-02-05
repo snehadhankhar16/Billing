@@ -3,6 +3,7 @@ const { generateotp, verifyotp } = require("../Services/OtpService/OtpService");
 const {otptoemailforverification} = require("../Services/EmailService/EmailService");
 const { User, Shopkeeper,Executive } = require("../Model/UserModel/UserModel");
 const Product=require("../Model/ProductModel/ProductModel")
+const Customer=require("../Model/CustomerModel/CustomerModel")
 const HandleResponse=require("../HandleResponse/HandleResponse")
 const jwt=require("jsonwebtoken");
 require("dotenv").config()
@@ -279,5 +280,26 @@ Routes.put("/disableexecutive",checkuserdetails, async (req, resp) => {
     return HandleResponse(resp,500,"Internal Server error",null,error)
   }
 });
+Routes.post("/createcustomer",checkuserdetails,async(req,resp)=>{
+  try {
+    const{name,phone,address}=req.body
+    if(!name || !phone || !address)return HandleResponse(resp,404,"Field is empty")
+    const existingcustomer=await Customer.findOne({phone,customerof:req.user._id})  
+    if(existingcustomer)return HandleResponse(resp,400,"Customer Already exists")
+    const newCustomer=await Customer.create({name,phone,address,customerof:req.user._id})
+    return HandleResponse(resp,201,"Customer created successfully",newCustomer)
+  } catch (error) {
+    return HandleResponse(resp,500,"Internal Server Error",null,error)  
+  }
+})
+Routes.get("/getallcustomers",checkuserdetails,async(req,resp)=>{
+  try {
+    const existingcustomers=await Customer.find({customerof:req.user._id})
+    if(!existingcustomers || existingcustomers.length===0) return HandleResponse(resp,404,"Customer list is empty")
+    return HandleResponse(resp,202,"Customers fetched successfully",existingcustomers)  
+  } catch (error) {
+    return HandleResponse(resp,500,"Internal Server error... ",null,error)
+  }
+})
 
 module.exports = Routes;
