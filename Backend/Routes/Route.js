@@ -7,6 +7,9 @@ const Customer=require("../Model/CustomerModel/CustomerModel")
 const HandleResponse=require("../HandleResponse/HandleResponse")
 const jwt=require("jsonwebtoken");
 require("dotenv").config()
+const { Invoice, Transaction } = require("../Model/TransactionModel/TransactionModel");
+const { default: mongoose } = require("mongoose");
+const OrderedItems = require("../Model/OrderedItemModel/OrderedItemModel");
 const checkuserdetails = require("../Middlewares/Checkuserdetails");
 const Routes = express.Router();
 
@@ -299,6 +302,84 @@ Routes.get("/getallcustomers",checkuserdetails,async(req,resp)=>{
     return HandleResponse(resp,202,"Customers fetched successfully",existingcustomers)  
   } catch (error) {
     return HandleResponse(resp,500,"Internal Server error... ",null,error)
+  }
+})
+async function generateInvoiceNumber() {
+  const lastInvoice = await Invoice.findOne().sort({ _id: -1 });
+  let newInvoiceNumber;
+  if (lastInvoice) {
+    let lastNumber = parseInt(lastInvoice.InvoiceNo.split('-')[1]) + 1;
+    newInvoiceNumber = `INV-${lastNumber.toString().padStart(5, '0')}`;
+  } else {
+    newInvoiceNumber = 'INV-00001';
+  }
+   return newInvoiceNumber;
+}
+const validateordereditems = (object, schema) => {
+  const schemaKeys = Object.keys(schema.paths).filter((key) => key !== '__v' && key !== '_id' && key !== 'createdat' && key !== 'subtotal');
+  const objectKeys = Object.keys(object);
+  for (const key of schemaKeys) {
+    if (!object.hasOwnProperty(key) || object[key] === null || object[key] === '') return "The key "+key+" is missing or empty."
+  }
+  for (const key of objectKeys) {
+    if (!schemaKeys.includes(key)) return "The key "+key+" is not declared in the schema."
+  }
+  return null;
+};
+Routes.post("/createInvoice/:id",checkuserdetails,async(req, resp) => {
+ try {
+  const {id} =req.params
+ if(!id || !mongoose.isValidObjectId(id)) return HandleResponse(resp,404,"Customer is not valid")
+ const existingCustomer=await Customer.findOne({_id:id})
+ if(!existingCustomer) return HandleResponse(resp,404,"Customer not found")
+  const {ordereditems}=req.body
+  if(!ordereditems) return HandleResponse(resp,404,"Select the items")
+  if (!Array.isArray(ordereditems) || ordereditems.length === 0) return HandleResponse(resp,400,'Invalid input. Provide an array of items.')
+  
+  const errors=[]
+  ordereditems.map(async(item,index)=>{
+    const validationError = validateordereditems(item, OrderedItems.schema);
+    if (validationError) errors.push({ index, error: validationError })
+  })
+  if(errors.length > 0) return HandleResponse(resp,400,'Validation errors occurred.',null,errors);
+  
+  let totaltax=0
+  let totaldiscount=0
+  let totalprofit=0
+  let totalamount=0
+  ordereditems.map(item =>{
+    const taxamount=((item.price*item.tax)/100)*item.quantity 
+    const discountamount=((item.price*item.discount)/100)*item.quantity
+    item.subtotal=(item.price*item.quantity)+taxamount-discountamount
+    const profitamount=item.subtotal-taxamount-discountamount-(item.rate*item.quantity)
+    totaltax+=taxamount
+    totaldiscount+=discountamount
+    totalprofit+=profitamount
+    totalamount+=item.subtotal
+  })
+  
+  const orders=await OrderedItems.insertMany(ordereditems)
+  const allid=orders.map(obj=>obj._id)
+  const invoiceNumber = await generateInvoiceNumber();
+  const updatedCustomer=await Customer.updateOne({_id:id},{$set:{balance:existingCustomer.balance+parseInt(totalamount)}})
+  const result = await Invoice.create({InvoiceNo: invoiceNumber,OrderItems:allid,TotalAmount:parseInt(totalamount),TotalProfit:totalprofit,TotalDiscount:totaldiscount,TotalTax:totaltax,customerId:id,shopkeeperId:req.user._id});
+  const resultingItems=await OrderedItems.find({_id:{$in:allid}})
+  return HandleResponse(resp,201,'Invoice generated successfully',{result,ordereditems:resultingItems});
+ } catch (error) {
+  return HandleResponse(resp,500,"Internal Server Error",null,error)
+ }
+})
+Routes.get("/getalltransactions/:id",checkuserdetails,async(req,resp)=>{
+  try {
+    const {id} =req.params
+    if(!id || !mongoose.isValidObjectId(id)) return HandleResponse(resp,404,"Customer is not valid")
+    const existingCustomer=await Customer.findOne({_id:id})
+    if(!existingCustomer) return HandleResponse(resp,404,"Customer not found")
+    const result=await Transaction.find({shopkeeperId:req.user._id,customerId:id})
+    if(!result || result.length === 0) return HandleResponse(response,404,"Transaction list is empty")
+    return HandleResponse(resp,202,"Transactions fetched successfully",result)
+  } catch (error) {
+    return HandleResponse(response,500,"Internal Server Error",null,error)
   }
 })
 

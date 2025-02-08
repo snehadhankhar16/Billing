@@ -3,8 +3,8 @@ import Footer from '../../CommonComponents/Footer'
 import Title from '../../CommonComponents/Title'
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
-const InvoiceDetails = () => {
-    const downloadInvoice = () => {
+const InvoiceDetails = ({data}) => {
+   {/* const downloadInvoice = () => {
         const invoiceElement = document.getElementById('invoice-content'); // Target the invoice container
         html2canvas(invoiceElement, { scale: 2 }).then((canvas) => {
             const imgData = canvas.toDataURL('image/png');
@@ -14,7 +14,7 @@ const InvoiceDetails = () => {
             pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
             pdf.save('Invoice.pdf'); // Download as Invoice.pdf
         });
-    };
+    };*/}
   return (
     <div className="main-content">
     <div className="page-content">
@@ -189,7 +189,7 @@ const InvoiceDetails = () => {
                                         </div>
                                         <div className="hstack gap-2 justify-content-end d-print-none mt-4">
                                             <a className="btn btn-info"><i className="ri-printer-line align-bottom me-1" /> Print</a>
-                                            <a onClick={downloadInvoice} className="btn btn-primary"><i className="ri-download-2-line align-bottom me-1" /> Download</a>
+                                         {/*  <a onClick={downloadInvoice} className="btn btn-primary"><i className="ri-download-2-line align-bottom me-1" /> Download</a>*/}
                                         </div>
                                     </div>
                                 </div>
