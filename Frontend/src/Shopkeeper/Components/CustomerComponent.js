@@ -130,9 +130,9 @@ const CustomerComponent = () => {
                                                                                         <i className="las la-ellipsis-h align-middle fs-18" />
                                                                                     </button>
                                                                                     <ul className="dropdown-menu dropdown-menu-end">
-                                                                                        <li>
-                                                                                          <Link to={'/TransactionList'} > <button className="dropdown-item"><i className="las la-eye fs-18 align-middle me-2 text-muted" />
-                                                                                                View</button></Link>
+                                                                                    <li>
+                                                                                    <a onClick={()=>{localStorage.setItem("Customerinfo",JSON.stringify({id:customer._id}));navigate("/TransactionList")}}> <button className="dropdown-item"><i className="las la-eye fs-18 align-middle me-2 text-muted" />
+                                                                                    View</button></a>
                                                                                         </li>
                                                                                         <li className="dropdown-divider" />
                                                                                         {

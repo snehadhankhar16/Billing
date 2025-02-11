@@ -7,7 +7,7 @@ const Customer=require("../Model/CustomerModel/CustomerModel")
 const HandleResponse=require("../HandleResponse/HandleResponse")
 const jwt=require("jsonwebtoken");
 require("dotenv").config()
-const { Invoice, Transaction } = require("../Model/TransactionModel/TransactionModel");
+const { Invoice, Transaction,Payment } = require("../Model/TransactionModel/TransactionModel");
 const { default: mongoose } = require("mongoose");
 const OrderedItems = require("../Model/OrderedItemModel/OrderedItemModel");
 const checkuserdetails = require("../Middlewares/Checkuserdetails");
@@ -403,7 +403,23 @@ Routes.get("/getShopkeeper",checkuserdetails,async(req,resp)=>{
     return HandleResponse(resp,500,"Internal Server Error",null,error)
   }
 })
-
+Routes.post("/addpayment/:id",checkuserdetails,async(req,resp)=>{
+  try {
+    const {RecieptNo,payment,Description}=req.body
+    if(!RecieptNo || !payment) return HandleResponse(resp,404,"Field is Empty")
+    const {id}=req.params
+    if(!id ||!mongoose.isValidObjectId(id)) return HandleResponse(resp,404,"Customer is not valid")
+    
+    const existingCustomer=await Customer.findOne({_id:id,customerof:req.user._id})
+    if(!existingCustomer) return HandleResponse(resp,404,"Customer is not found in your list")
+    existingCustomer.balance-=payment
+    const updatedCustomer=await Customer.updateOne({_id:id,customerof:req.user._id},{$set:{balance:existingCustomer.balance}})
+    const result=await Payment.create({shopkeeperId:req.user._id,customerId:id,RecieptNo,payment,Description})
+    return HandleResponse(resp,201,"Customer updated successfully",{updatedCustomer,result})
+  } catch (error) {
+    return HandleResponse(resp,500,"Internal Server Error",null,error)
+  }
+})
 
 
 
