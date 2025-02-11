@@ -376,11 +376,38 @@ Routes.get("/getalltransactions/:id",checkuserdetails,async(req,resp)=>{
     const existingCustomer=await Customer.findOne({_id:id})
     if(!existingCustomer) return HandleResponse(resp,404,"Customer not found")
     const result=await Transaction.find({shopkeeperId:req.user._id,customerId:id})
-    if(!result || result.length === 0) return HandleResponse(response,404,"Transaction list is empty")
+    if(!result || result.length === 0) return HandleResponse(resp,404,"Transaction list is empty")
     return HandleResponse(resp,202,"Transactions fetched successfully",result)
   } catch (error) {
-    return HandleResponse(response,500,"Internal Server Error",null,error)
+    return HandleResponse(resp,500,"Internal Server Error",null,error)
+  }
+})
+Routes.get("/getCustomer/:id",checkuserdetails,async(req,resp)=>{
+  try {
+    const{id}=req.params
+    if(!id || !mongoose.isValidObjectId(id)) return HandleResponse(resp,404,"Customer is not valid....")
+
+    const existingCustomer=await Customer.findOne({_id:id,customerof:req.user._id})
+    if(!existingCustomer) return HandleResponse(resp,404,"Customer is not found in your list..")
+    return HandleResponse(resp,202,"Customer fetched Successfully",existingCustomer)    
+  } catch (error) {
+    return HandleResponse(resp,500,"Internal Server Error",null,error)
+  }
+})
+Routes.get("/getShopkeeper",checkuserdetails,async(req,resp)=>{
+  try {
+    const existingShopkeeper=await Shopkeeper.findOne({_id:req.user._id}).select("-password -_id")
+    if(!existingShopkeeper) return HandleResponse(resp,404,"Shopkeeper is not found in your list")
+    return HandleResponse(resp,202,"Shopkeeper fetched successfully",existingShopkeeper)
+  } catch (error) {
+    return HandleResponse(resp,500,"Internal Server Error",null,error)
   }
 })
 
+
+
+
+
+
+   
 module.exports = Routes;
