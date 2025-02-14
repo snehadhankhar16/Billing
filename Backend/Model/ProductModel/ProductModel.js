@@ -44,5 +44,6 @@ const productschema=new mongoose.Schema({
     default:0
    },
 })
+productschema.index({ userid: 1, model: 1 }, { unique: true })
 const Product=mongoose.model(process.env.MONGODB_PRODUCT_COLLECTION,productschema)
 module.exports=Product

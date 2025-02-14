@@ -118,11 +118,13 @@ Routes.post("/addproduct",checkuserdetails,async(req,resp)=>{
         const existingproduct=await Product.findOne({model, userid:req.user._id})
         if(existingproduct) return HandleResponse(resp,400,"Product of this model already exists")
         
-        const newproduct=await Product.create({userid:req.user._id,name,company,model :parseInt(model),description,price,discount,rate,tax,stock})
+        const newproduct=await Product.create({userid:req.user._id,name,company,model:model,description,price,discount,rate,tax,stock})
         return HandleResponse(resp,201,"Product added successfully",newproduct)
     } catch (error) {
+      console.log(error)
         return HandleResponse(resp,500,"Internal Server error",null, error )
     }
+    
 })
 Routes.get("/getproducts",checkuserdetails,async(req,resp)=>{
     try {
@@ -304,8 +306,8 @@ Routes.get("/getallcustomers",checkuserdetails,async(req,resp)=>{
     return HandleResponse(resp,500,"Internal Server error... ",null,error)
   }
 })
-async function generateInvoiceNumber(userid) {
-  const lastInvoice = await Invoice.findOne({userid}).sort({ _id: -1 });
+async function generateInvoiceNumber(shopkeeperId) {
+  const lastInvoice = await Invoice.findOne({shopkeeperId}).sort({ _id: -1 });
   let newInvoiceNumber;
   if (lastInvoice) {
     let lastNumber = parseInt(lastInvoice.InvoiceNo.split('-')[1]) + 1;
@@ -320,7 +322,7 @@ const validateordereditems = (object) => {
   if(!object.id || object.id==="" || object.id==null || !mongoose.isValidObjectId(object.id)) return "Product id is invalid";
   if(!object.quantity || object.quantity==="" || object.quantity===null || object.quantity<=0) return "Product quantity is invalid";
   return null
- }
+}
  Routes.post("/createInvoice/:id",checkuserdetails,async(req, resp) => {
   try {
    const {id} =req.params
@@ -381,9 +383,8 @@ const validateordereditems = (object) => {
   } catch (error) {  
    return HandleResponse(resp,500,"Internal Server Error",null,error)
   }
- })
- 
-Routes.get("/getalltransactions/:id",checkuserdetails,async(req,resp)=>{
+})
+ Routes.get("/getalltransactions/:id",checkuserdetails,async(req,resp)=>{
   try {
     const {id} =req.params
     if(!id || !mongoose.isValidObjectId(id)) return HandleResponse(resp,404,"Customer is not valid")
