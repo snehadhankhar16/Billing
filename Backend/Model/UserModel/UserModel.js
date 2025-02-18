@@ -57,7 +57,8 @@ const ShopkeeperSchema=new mongoose.Schema({
 //for executive purpose
 const ExecutiveSchema=new mongoose.Schema({
    executiveof:{
-    type:String,
+    type:mongoose.Schema.Types.ObjectId,
+    ref:"users",
     required:true
    }
 })

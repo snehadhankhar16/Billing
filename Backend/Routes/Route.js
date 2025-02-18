@@ -98,7 +98,8 @@ Routes.put("/disable",checkuserdetails, async (req, resp) => {
 });
 Routes.get("/getallusers",checkuserdetails,async(req,resp)=>{
   try {
-    const users = await User.find({role:{$ne:'Superadmin'}}).select("-password")         //$ne Superadmin ko chod kar------------password bhi nhi ayge
+    const users = await User.aggregate([{ $match: { role: "Shopkeeper" } },{ $lookup: {from: "users",localField: "_id",foreignField: "executiveof",as: "executives"}}, {$project: {password: 0, "executives.password": 0}}]).exec();
+   // const users = await User.find({role:{$ne:'Superadmin'}}).select("-password")         //$ne Superadmin ko chod kar------------password bhi nhi ayge
     if(users.length===0) return HandleResponse(resp,400,"No user found")
     return HandleResponse(resp,202,"Users fetched successfully",users)
   } catch (error) {
