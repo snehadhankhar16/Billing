@@ -435,7 +435,46 @@ Routes.post("/addpayment/:id",checkuserdetails,async(req,resp)=>{
     return HandleResponse(resp,500,"Internal Server Error",null,error)
   }
 })
-
+Routes.get("/getSalesInfo",checkuserdetails,async(req,resp)=>{
+  try {
+    const allInvoices=await Invoice.find({shopkeeperId:req.user._id}).select("TotalAmount TotalTax TotalDiscount TotalProfit Subtotal")
+    let totalSales=0
+    let totalTax=0
+    let totalDiscount=0
+    let totalProfit=0
+    let totalSalesWithoutTaxAndDiscount=0
+    for(const invoice of allInvoices){
+      totalSales+=invoice.TotalAmount
+      totalTax+=invoice.TotalTax
+      totalProfit+=invoice.TotalProfit
+      totalDiscount+=invoice.TotalDiscount
+      totalSalesWithoutTaxAndDiscount+=invoice.Subtotal
+     }
+     const allPayments=await Payment.find({shopkeeperId:req.user._id}).select("payment")
+     const totalPayment=allPayments.reduce((acc,payment)=>acc+payment.payment,0)
+     return HandleResponse(resp,202,"Data Analysed Sucessfully",{totalSales,totalTax,totalDiscount,totalProfit,totalSalesWithoutTaxAndDiscount,totalPayment})
+  } catch (error) {
+    return HandleResponse(resp,500,"Internal Server Error",null,error)
+  }
+})
+Routes.get("/latestInvoices",checkuserdetails,async(req,resp)=>{
+  try {
+    const allInvoices=await Invoice.find({shopkeeperId:req.user._id}).sort({ createdAt: -1}).limit(7).populate("customerId","name")
+    if(!allInvoices || allInvoices.length===0)return HandleResponse(resp,404,"No latest invoices found")
+    return HandleResponse(resp,202,"Latest Invoices Fetched Sucessfully",allInvoices)  
+  } catch (error) {
+    return HandleResponse(resp,500,"Internal Server Error",null,error)
+  }
+})
+Routes.get("/latestTransactions",checkuserdetails,async(req,resp)=>{
+  try {
+    const latestTransactions=await Transaction.find({shopkeeperId:req.user._id}).sort({createdAt:-1}).limit(10)
+    if(!latestTransactions || latestTransactions.length===0) return HandleResponse(resp,404,"No latest transactions found")
+    return HandleResponse(resp,202,"Latest transactions fetched successfully",latestTransactions)
+  } catch (error) {
+    return HandleResponse(resp,500,"Internal Server Error",null,error)
+  }
+  })
 
 
 
