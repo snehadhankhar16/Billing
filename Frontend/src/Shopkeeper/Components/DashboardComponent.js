@@ -111,7 +111,7 @@ const DashboardComponent = () => {
                 <div className="col-lg-4 mini-widget pt-3 pt-lg-0">
                   <div className="d-flex align-items-end">
                     <div className="flex-grow-1">
-                      <h2 className="mb-0 fs-24"><span className="counter-value" data-target={512}>₹{data?.totalProfit}/-</span></h2>
+                      <h2 className="mb-0 fs-24"><span className="counter-value" data-target={512}>₹{data?.totalProfit?.toFixed(2)}/-</span></h2>
                       <h5 className="text-muted fs-16 mt-2 mb-0">Profit generated</h5>
                       <p className="text-muted mt-3 pt-1 mb-0 text-truncate"> <span className="badge bg-info me-1">This Year</span></p>
                     </div>
